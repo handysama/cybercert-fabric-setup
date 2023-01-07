@@ -1,0 +1,8 @@
+{
+    "index":{
+        "fields":["certificate_id"]
+    },
+    "ddoc":"indexCertificateIdDoc",
+    "name":"indexCertificateId",
+    "type":"json"
+}

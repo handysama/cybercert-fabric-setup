@@ -1,0 +1,8 @@
+{
+    "index":{
+        "fields":["issuer_name"]
+    },
+    "ddoc":"indexIssuerNameDoc",
+    "name":"indexIssuerName",
+    "type":"json"
+}
