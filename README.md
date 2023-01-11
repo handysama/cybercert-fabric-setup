@@ -23,8 +23,20 @@ sudo snap install helm --classic
 
 # for Krew installation please refer to official guide
 
+# Add user group. Replace USER with your local username
+sudo usermod -a -G microk8s USER
+
 # Enable necessary plugin
 microk8s enable dashboard istio storage
+
+# To monitor kubenertes resource use this command. Open url and use default token to access dashboard.
+microk8s dashboard-proxy
+```
+
+Add an alias to simplify invoke namespaced microk8s (append to ~/.bash_aliases):
+
+```text
+alias kubectl='microk8s kubectl'
 ```
 
 Deployment setup:
