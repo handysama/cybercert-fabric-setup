@@ -9,6 +9,7 @@ Windows platform is not supported, due to not supported by some open source libr
 Prerequisite software:
 
 - [snapd](https://snapcraft.io/docs/installing-snapd)
+- [Docker](https://docs.docker.com/engine/install/ubuntu/)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-using-native-package-management)
 - [microk8s](https://microk8s.io/)
 - [krew](https://krew.sigs.k8s.io/docs/user-guide/setup/install/)
@@ -21,7 +22,7 @@ snap install kubectl --classic
 sudo snap install microk8s --classic
 sudo snap install helm --classic
 
-# for Krew installation please refer to official guide
+# for Docker and Krew installation please refer to official guide
 
 # Add user group. Replace USER with your local username
 sudo usermod -a -G microk8s USER
