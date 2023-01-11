@@ -9,7 +9,7 @@ Windows platform is not supported, due to not supported by some open source libr
 Prerequisite software:
 
 - [snapd](https://snapcraft.io/docs/installing-snapd)
-- [Docker](https://docs.docker.com/engine/install/ubuntu/)
+- [Docker](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-using-native-package-management)
 - [microk8s](https://microk8s.io/)
 - [krew](https://krew.sigs.k8s.io/docs/user-guide/setup/install/)
@@ -18,25 +18,40 @@ Prerequisite software:
 Following are commands to install from command line.
 
 ```bash
-snap install kubectl --classic
-sudo snap install microk8s --classic
-sudo snap install helm --classic
+# Setup Docker (please refer to official guide)
 
-# for Docker and Krew installation please refer to official guide
+# Add user group
+sudo usermod -a -G docker $USER
 
-# Add user group. Replace USER with your local username
-sudo usermod -a -G microk8s USER
+# Install microk8s with last working version
+sudo snap install microk8s --classic --channel=1.23/stable
+
+# Add user group. Restart terminal session to take effect
+sudo usermod -a -G microk8s $USER
+sudo chown -f -R $USER ~/.kube
+
+# Assert microk8s is up
+microk8s status --wait-ready
 
 # Enable necessary plugin
 microk8s enable dashboard istio storage
 
-# To monitor kubenertes resource use this command. Open url and use default token to access dashboard.
-microk8s dashboard-proxy
+sudo snap install kubectl --classic
+sudo snap install helm --classic
+
+# Setup Krew installation (please refer to official guide)
 ```
 
-Add an alias to simplify invoke namespaced microk8s (append to ~/.bash_aliases):
+Add these lines to PATH environment variable (~/.bashrc)
 
-```text
+```bash
+export KUBECONFIG=/var/snap/microk8s/current/credentials/client.config # Change to your local path
+export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
+```
+
+Add an alias for microk8s kubectl (append to ~/.bash_aliases):
+
+```bash
 alias kubectl='microk8s kubectl'
 ```
 
@@ -50,11 +65,31 @@ Deployment setup:
 - Before proceed, we need to patch hlf command tools (plugin) to increase block size.
   - Goto line of code like example in [here](https://github.com/hyperledger-labs/hlf-operator/blob/94c333140de92a1125d9fba8192396a01afbed4b/controllers/testutils/channel.go#L183) then update `AbsoluteMaxBytes` to `10 * 10124 * 1024`.
   - Goto `kubectl-hlf` directory and run `go build -o kubectl-hlf main.go`
-  - Find your local path of `kubectl-hlf` then replace (or rename original for backup) with previous patched build
-- Copy all fies in `chaincodes` directory to `fixtures/chaincodes`. Example: `/home/ubuntu/github/hlf-operator/fixtures/chaincodes`
-- Create directory `scripts` and copy all files from `scripts` into there. Example `/home/ubuntu/github/hlf-operator/scripts`
+  - Find your local path of `kubectl-hlf` and change directory to there
+    - Example local path `/home/$USER/.krew/store/hlf/v1.8.4/kubectl-hlf`
+    - Example change dir to `/home/$USER/.krew/store/hlf/`
+  - Run `wget https://github.com/hyperledger-labs/hlf-operator/releases/download/v1.5.1/hlf-operator_1.5.1_linux_amd64.zip`
+  - Run `unzip -d v1.5.1 hlf-operator_1.5.1_linux_amd64.zip`
+  - Move previous build of `kubectl-hlf` to `v1.5.1` directory
+  - Update symlink of `kubectl-hlf` point to patched `v1.5.1`
+    - Example: `ln -sf /home/$USER/.krew/store/hlf/v1.5.1/kubectl-hlf ~/.krew/bin/kubectl-hlf`
+  - Run `ls -al ~/.krew/bin/` to assert symlink updated
+- Copy all fies in `chaincodes` directory to `fixtures/chaincodes`
+  - Example: `/home/ubuntu/github/hlf-operator/fixtures/chaincodes`
+- Create directory `scripts` and copy all files from `scripts` into there
+  - Example `/home/ubuntu/github/hlf-operator/scripts`
 - From `scripts/deploy-fabric.sh`, change `KUBE_CONFIG_PATH` and `KUBECONFIG` to your local path then run the script
 - After running `deploy-fabric.sh`, there will be network config file `org1.yaml`. This config will be use in `blockchain-api`, please note the path to the file.
+
+## Dashboard
+
+Dashboard is important feature to allow us monitor and managing kubernetes cluster.
+
+Use this command to run dashboard on separate terminal. Open url in web browser and use the token to access dashboard.
+
+```bash
+microk8s dashboard-proxy
+```
 
 ## How to clean up resource
 
