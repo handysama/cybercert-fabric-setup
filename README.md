@@ -8,10 +8,11 @@ Windows platform is not supported, due to not supported by some open source libr
 
 Prerequisite software:
 
+- [go 1.18](https://go.dev/doc/install)
 - [snapd](https://snapcraft.io/docs/installing-snapd)
 - [Docker](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-using-native-package-management)
-- [microk8s](https://microk8s.io/)
+- [microk8s 1.23](https://microk8s.io/docs/getting-started)
 - [krew](https://krew.sigs.k8s.io/docs/user-guide/setup/install/)
 - [helm](https://helm.sh/docs/intro/install/#from-snap)
 
