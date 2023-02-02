@@ -15,6 +15,7 @@ Prerequisite software:
 - [microk8s 1.23](https://microk8s.io/docs/getting-started)
 - [krew](https://krew.sigs.k8s.io/docs/user-guide/setup/install/)
 - [helm](https://helm.sh/docs/intro/install/#from-snap)
+- [jq](https://hyperledger-fabric.readthedocs.io/en/latest/prereqs.html#jq)
 
 Following are commands to install from command line.
 
@@ -35,7 +36,7 @@ sudo chown -f -R $USER ~/.kube
 microk8s status --wait-ready
 
 # Enable necessary plugin
-microk8s enable dashboard istio storage
+microk8s enable dashboard dns istio storage
 
 sudo snap install kubectl --classic
 sudo snap install helm --classic
@@ -58,23 +59,96 @@ alias kubectl='microk8s kubectl'
 
 Deployment setup:
 
-- Run `git clone https://github.com/hyperledger-labs/hlf-operator.git` and checkout to `v1.5.1`
-- Change directory to `hlf-operator` repository. This will serve as working directory.
-- Install [istio](https://github.com/hyperledger-labs/hlf-operator/tree/2ab0262e1776621eed19beedf9bf5fa5f397b5b2#install-istio)
-- Install operator: `helm install hlf-operator ./chart/hlf-operator`
-- Install plugin: `kubectl krew install hlf`
-- Before proceed, we need to patch hlf command tools (plugin) to increase block size.
+- Clone `hlf-operator`
+
+  ```bash
+  git clone https://github.com/hyperledger-labs/hlf-operator.git && cd hlf-operator
+  git checkout v1.5.1
+  ```
+
+- Install istio. See: <https://github.com/hyperledger-labs/hlf-operator/tree/2ab0262e1776621eed19beedf9bf5fa5f397b5b2#install-istio>
+
+  ```bash
+  kubectl apply -f ./hack/istio-operator/crds/*
+  helm template ./hack/istio-operator/ \
+    --set hub=docker.io/istio \
+    --set tag=1.8.0 \
+    --set operatorNamespace=istio-operator \
+    --set watchedNamespaces=istio-system | kubectl apply -f -
+
+  kubectl create ns istio-system
+  kubectl apply -n istio-system -f ./hack/istio-operator.yaml
+  ```
+
+- Install operator
+
+  ```bash
+  helm install hlf-operator ./chart/hlf-operator
+  ```
+
+- Install plugin
+
+  ```bash
+  kubectl krew install hlf
+  ```
+
+- Patch kubectl-hlf command tools (plugin) to increase block size.
   - Goto line of code like example in [here](https://github.com/hyperledger-labs/hlf-operator/blob/94c333140de92a1125d9fba8192396a01afbed4b/controllers/testutils/channel.go#L183) then update `AbsoluteMaxBytes` to `10 * 10124 * 1024`.
-  - Goto `kubectl-hlf` directory and run `go build -o kubectl-hlf main.go`
+
+    ```go
+    // Before
+    BatchSize: orderer.BatchSize{
+      MaxMessageCount:   100,
+      AbsoluteMaxBytes:  1024 * 1024,
+      PreferredMaxBytes: 512 * 1024,
+    }
+    // After
+    BatchSize: orderer.BatchSize{
+      MaxMessageCount:   100,
+      AbsoluteMaxBytes:  10 * 1024 * 1024, // increase limit
+      PreferredMaxBytes: 512 * 1024,
+    }
+    ```
+
+  - Build patched `kubectl-hlf`
+
+    ```bash
+    cd kubectl-hlf
+    go build -o kubectl-hlf main.go
+    ```
+
   - Find your local path of `kubectl-hlf` and change directory to there
-    - Example local path `/home/$USER/.krew/store/hlf/v1.8.4/kubectl-hlf`
-    - Example change dir to `/home/$USER/.krew/store/hlf/`
-  - Run `wget https://github.com/hyperledger-labs/hlf-operator/releases/download/v1.5.1/hlf-operator_1.5.1_linux_amd64.zip`
-  - Run `unzip -d v1.5.1 hlf-operator_1.5.1_linux_amd64.zip`
+
+    Example local path `/home/$USER/.krew/store/hlf/v1.8.4/kubectl-hlf`
+
+    Example change dir to `/home/$USER/.krew/store/hlf/`
+
+    ```bash
+    cd ~/.krew/store/hlf
+    ```
+
+  - Download official kubectl-hlf v1.5.1 and extract the zip file
+
+    ```bash
+    wget https://github.com/hyperledger-labs/hlf-operator/releases/download/v1.5.1/hlf-operator_1.5.1_linux_amd64.zip
+    unzip -d v1.5.1 hlf-operator_1.5.1_linux_amd64.zip
+    ```
+
   - Move previous build of `kubectl-hlf` to `v1.5.1` directory
-  - Update symlink of `kubectl-hlf` point to patched `v1.5.1`
-    - Example: `ln -sf /home/$USER/.krew/store/hlf/v1.5.1/kubectl-hlf ~/.krew/bin/kubectl-hlf`
-  - Run `ls -al ~/.krew/bin/` to assert symlink updated
+
+    ```bash
+    cp ~/hlf-operator/kubectl-hlf/kubectl-hlf ~/.krew/store/hlf/v1.5.1/kubectl-hlf
+    ```
+
+  - Update symlink of `kubectl-hlf` point to `v1.5.1`
+
+    ```bash
+    ln -sf ~/.krew/store/hlf/v1.5.1/kubectl-hlf ~/.krew/bin/kubectl-hlf
+
+    # Assert symlink updated
+    ls -al ~/.krew/bin/
+    ```
+
 - Copy all fies in `chaincodes` directory to `fixtures/chaincodes`
   - Example: `/home/ubuntu/github/hlf-operator/fixtures/chaincodes`
 - Create directory `scripts` and copy all files from `scripts` into there
@@ -105,7 +179,7 @@ kubectl delete fabriccas.hlf.kungfusoftware.es --all-namespaces --all
 
 ## How to redeploy setup
 
-Steps needed to redeploy:
+### Steps for redeploy
 
 - Update Persistent Volumes reclaim policy from `Delete` to `Retain` for:
   - `default/org1-peer0--couchdb`
