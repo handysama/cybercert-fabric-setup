@@ -15,7 +15,18 @@ Prerequisite software:
 - [microk8s 1.23](https://microk8s.io/docs/getting-started)
 - [krew](https://krew.sigs.k8s.io/docs/user-guide/setup/install/)
 - [helm](https://helm.sh/docs/intro/install/#from-snap)
-- [jq](https://hyperledger-fabric.readthedocs.io/en/latest/prereqs.html#jq)
+
+Additional software required for channel configuration:
+
+- [jq](https://stedolan.github.io/jq/download/)
+- [yq](https://github.com/kislyuk/yq#installation)
+- [fabric-binaries](https://github.com/hyperledger/fabric/releases/tag/v2.4.3)
+
+  ```bash
+  wget https://github.com/hyperledger/fabric/releases/download/v2.4.3/hyperledger-fabric-linux-amd64-2.4.3.tar.gz
+  sudo mkdir /usr/local/fabric-binaries
+  sudo tar -C /usr/local/fabric-binaries -xzf hyperledger-fabric-linux-amd64-2.4.3.tar.gz
+  ```
 
 Following are commands to install from command line.
 
@@ -48,7 +59,7 @@ Add these lines to PATH environment variable (~/.bashrc)
 
 ```bash
 export KUBECONFIG=/var/snap/microk8s/current/credentials/client.config # Change to your local path
-export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
+export PATH="${KREW_ROOT:-$HOME/.krew}/bin:/usr/local/fabric-binaries/bin:$PATH"
 ```
 
 Add an alias for microk8s kubectl (append to ~/.bash_aliases):
