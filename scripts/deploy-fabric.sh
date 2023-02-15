@@ -13,10 +13,12 @@ export ORDERER_IMAGE=hyperledger/fabric-orderer
 export ORDERER_VERSION=2.4.1
 
 export HLF_STORAGE_CLASS=microk8s-hostpath # default: standard
-
 export CHANNEL_ID=ecertplatform
+
 export ORG1_NAME=org1
 export ORG1_MSP=Org1MSP
+export ORG1_ADMIN_USER=admin
+export ORG1_PEER0=${ORG1_NAME}-peer0.default
 
 ###############################################################################
 # Create Certificate Authority (CA) and Peer for Organization
@@ -40,7 +42,7 @@ kubectl hlf ca register \
     --type peer \
     --enroll-id enroll \
     --enroll-secret enrollpw \
-    --mspid Org1MSP
+    --mspid "${ORG1_MSP}"
 
 echo "=== Create Peer ==="
 
@@ -51,7 +53,7 @@ kubectl hlf peer create \
     --version "${PEER_VERSION}" \
     --storage-class "${HLF_STORAGE_CLASS}" \
     --enroll-id peer \
-    --mspid Org1MSP \
+    --mspid "${ORG1_MSP}" \
     --enroll-pw peerpw \
     --capacity 10Gi \
     --name org1-peer0 \
@@ -66,7 +68,7 @@ kubectl wait --timeout=180s --for=condition=Running fabricpeers.hlf.kungfusoftwa
 #     --version "${PEER_VERSION}" \
 #     --storage-class "${HLF_STORAGE_CLASS}" \
 #     --enroll-id peer \
-#     --mspid Org1MSP \
+#     --mspid "${ORG1_MSP}" \
 #     --enroll-pw peerpw \
 #     --capacity 5Gi \
 #     --name org1-peer1 \
@@ -113,12 +115,11 @@ kubectl hlf ordnode create \
 
 kubectl wait --timeout=180s --for=condition=Running fabricorderernodes.hlf.kungfusoftware.es --all
 
-# Output orderer service config
 kubectl hlf inspect --output ordservice.yaml -o OrdererMSP
 
 kubectl hlf ca register \
     --name ord-ca \
-    --user admin \
+    --user "${ORG1_ADMIN_USER}" \
     --secret adminpw \
     --type admin \
     --enroll-id enroll \
@@ -127,14 +128,17 @@ kubectl hlf ca register \
 
 kubectl hlf ca enroll \
     --name ord-ca \
-    --user admin \
+    --user "${ORG1_ADMIN_USER}" \
     --secret adminpw \
     --mspid OrdererMSP \
     --ca-name ca \
     --output admin-ordservice.yaml
 
-## add user from admin-ordservice.yaml to ordservice.yaml
-kubectl hlf utils adduser --userPath=admin-ordservice.yaml --config=ordservice.yaml --username=admin --mspid=OrdererMSP
+kubectl hlf utils adduser \
+    --userPath admin-ordservice.yaml \
+    --config ordservice.yaml \
+    --username "${ORG1_ADMIN_USER}" \
+    --mspid OrdererMSP
 
 sleep 10
 
@@ -147,13 +151,13 @@ echo "=== Create Channel ==="
 kubectl hlf channel generate \
     --output "${CHANNEL_ID}.block" \
     --name "${CHANNEL_ID}" \
-    --organizations Org1MSP \
+    --organizations "${ORG1_MSP}" \
     --ordererOrganizations OrdererMSP
 
 kubectl hlf ca enroll \
     --name ord-ca \
     --namespace default \
-    --user admin \
+    --user "${ORG1_ADMIN_USER}" \
     --secret adminpw \
     --mspid OrdererMSP \
     --ca-name tlsca \
@@ -167,28 +171,28 @@ kubectl hlf ordnode join \
 
 kubectl hlf ca register \
     --name org1-ca \
-    --user admin \
+    --user "${ORG1_ADMIN_USER}" \
     --secret adminpw \
     --type admin \
     --enroll-id enroll \
     --enroll-secret enrollpw \
-    --mspid Org1MSP  
+    --mspid "${ORG1_MSP}"
 
 kubectl hlf ca enroll \
     --name org1-ca \
-    --user admin \
+    --user "${ORG1_ADMIN_USER}" \
     --secret adminpw \
-    --mspid Org1MSP \
+    --mspid "${ORG1_MSP}" \
     --ca-name ca \
     --output peer-org1.yaml
 
-kubectl hlf inspect --output org1.yaml -o Org1MSP -o OrdererMSP
+kubectl hlf inspect --output "${ORG1_NAME}.yaml" -o "${ORG1_MSP}" -o OrdererMSP
 
 kubectl hlf utils adduser \
     --userPath peer-org1.yaml \
-    --config org1.yaml \
-    --username admin \
-    --mspid Org1MSP
+    --config "${ORG1_NAME}.yaml" \
+    --username "${ORG1_ADMIN_USER}" \
+    --mspid "${ORG1_MSP}"
 
 sleep 10
 
@@ -201,30 +205,30 @@ echo "=== Join channel ==="
 # Join Peer0
 kubectl hlf channel join \
     --name "${CHANNEL_ID}" \
-    --config org1.yaml \
-    --user admin \
-    --peer org1-peer0.default
+    --config "${ORG1_NAME}.yaml" \
+    --user "${ORG1_ADMIN_USER}" \
+    --peer "${ORG1_PEER0}"
 
 # Join Peer1
 # kubectl hlf channel join \
 #     --name "${CHANNEL_ID}" \
-#     --config org1.yaml \
-#     --user admin \
-#     --peer org1-peer1.default
+#     --config "${ORG1_NAME}.yaml" \
+#     --user "${ORG1_ADMIN_USER}" \
+#     --peer "${ORG1_PEER0}"
 
 # Output channel config
 kubectl hlf channel inspect \
     --channel "${CHANNEL_ID}" \
-    --config org1.yaml \
-    --user admin \
-    --peer org1-peer0.default > "${CHANNEL_ID}.json"
+    --config "${ORG1_NAME}.yaml" \
+    --user "${ORG1_ADMIN_USER}" \
+    --peer "${ORG1_PEER0}" > "${CHANNEL_ID}.json"
 
 echo "=== Add anchor peer ==="
 kubectl hlf channel addanchorpeer \
     --channel "${CHANNEL_ID}" \
-    --config org1.yaml \
-    --user admin \
-    --peer org1-peer0.default 
+    --config "${ORG1_NAME}.yaml" \
+    --user "${ORG1_ADMIN_USER}" \
+    --peer "${ORG1_PEER0}" 
 
 sleep 10
 
@@ -234,52 +238,49 @@ sleep 10
 
 deploy_chaincode() {
     echo "=== Install chaincode ${CC_NAME} / this can take 3-4 minutes ==="
-
     kubectl hlf chaincode install \
         --path "./fixtures/chaincodes/${CC_NAME}" \
-        --config org1.yaml \
+        --config "${ORG1_NAME}.yaml" \
         --language golang \
         --label "${CC_NAME}" \
-        --user admin \
-        --peer org1-peer0.default
+        --user "${ORG1_ADMIN_USER}" \
+        --peer "${ORG1_PEER0}"
 
     echo "=== Query chaincodes ${CC_NAME} installed ==="
-
     kubectl hlf chaincode queryinstalled \
-        --config org1.yaml \
-        --user admin \
-        --peer org1-peer0.default
+        --config "${ORG1_NAME}.yaml" \
+        --user "${ORG1_ADMIN_USER}" \
+        --peer "${ORG1_PEER0}"
 
-    PACKAGE_ID=`kubectl hlf chaincode queryinstalled --config=org1.yaml --user=admin --peer=org1-peer0.default | awk -v cc_name="${CC_NAME}" '{ if ($2 == cc_name) print $1 }'`
+    PACKAGE_ID=`kubectl hlf chaincode queryinstalled --config="${ORG1_NAME}.yaml" --user="${ORG1_ADMIN_USER}" --peer="${ORG1_PEER0}" | awk -v cc_name="${CC_NAME}" '{ if ($2 == cc_name) print $1 }'`
     echo "${PACKAGE_ID}"
 
     echo "=== Approve Chaincode ${CC_NAME} ==="
-
     kubectl hlf chaincode approveformyorg \
-        --config org1.yaml \
-        --user admin \
-        --peer org1-peer0.default \
+        --config "${ORG1_NAME}.yaml" \
+        --user "${ORG1_ADMIN_USER}" \
+        --peer "${ORG1_PEER0}" \
         --package-id "${PACKAGE_ID}" \
         --version "${CC_VERSION}" \
         --sequence "${CC_SEQUENCE}" \
         --name "${CC_NAME}" \
-        --policy "OR('Org1MSP.member')" \
+        --policy "OR('${ORG1_MSP}.member')" \
         --channel "${CHANNEL_ID}"
 
     echo "=== Commit Chaincode ${CC_NAME} ==="
     kubectl hlf chaincode commit \
-        --config org1.yaml \
-        --user admin \
-        --mspid Org1MSP \
+        --config "${ORG1_NAME}.yaml" \
+        --user "${ORG1_ADMIN_USER}" \
+        --mspid "${ORG1_MSP}" \
         --version "${CC_VERSION}" \
         --sequence "${CC_SEQUENCE}" \
         --name "${CC_NAME}" \
-        --policy "OR('Org1MSP.member')" \
+        --policy "OR('${ORG1_MSP}.member')" \
         --channel "${CHANNEL_ID}"
 }
 
 export CC_SEQUENCE=1
-export CC_VERSION="1.0"
+export CC_VERSION=1.0
 export CC_NAME=certificate_info
 deploy_chaincode
 

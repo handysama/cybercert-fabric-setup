@@ -207,8 +207,6 @@ kubectl hlf channel addorg \
 
 # Prepare config update material
 
-configtxlator proto_encode --type common.ConfigUpdate --input "${ORG2_NAME}.json" --output "${ORG2_NAME}.pb"
-
 echo '{"payload":{"header":{"channel_header":{"channel_id":"'${CHANNEL_ID}'","type":2}},"data":{"config_update":'$(cat ${ORG2_NAME}.json)'}}}' | jq . > "${ORG2_NAME}_update_in_envelope.json"
 
 configtxlator proto_encode --type common.Envelope --input "${ORG2_NAME}_update_in_envelope.json" --output "${ORG2_NAME}_update_in_envelope.pb"

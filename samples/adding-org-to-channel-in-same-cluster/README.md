@@ -68,10 +68,10 @@ The first step is to create `CA` and one `peer` for Org2.
 ```bash
 # Create CA
 kubectl hlf ca create \
-    --storage-class ${HLF_STORAGE_CLASSS} \
+    --storage-class "${HLF_STORAGE_CLASSS}" \
     --capacity 2Gi \
-    --namespace ${ORG2_NAMESPACE} \
-    --name ${ORG2_CA} \
+    --namespace "${ORG2_NAMESPACE}" \
+    --name "${ORG2_CA}" \
     --enroll-id enroll \
     --enroll-pw enrollpw
 
@@ -79,26 +79,26 @@ kubectl wait --timeout=180s --for=condition=Running fabriccas.hlf.kungfusoftware
 
 # Register user for the peer
 kubectl hlf ca register \
-    --name ${ORG2_CA} \
+    --name "${ORG2_CA}" \
     --user peer \
     --secret peerpw \
     --type peer \
     --enroll-id enroll \
     --enroll-secret enrollpw \
-    --mspid ${ORG2_MSP} \
-    --namespace ${ORG2_NAMESPACE}
+    --mspid "${ORG2_MSP}" \
+    --namespace "${ORG2_NAMESPACE}"
 
 # Create Peer
 kubectl hlf peer create \
     --statedb couchdb \
-    --image ${PEER_IMAGE} \
-    --version ${PEER_VERSION} \
-    --storage-class ${HLF_STORAGE_CLASS} \
+    --image "${PEER_IMAGE}" \
+    --version "${PEER_VERSION}" \
+    --storage-class "${HLF_STORAGE_CLASS}" \
     --capacity 5Gi \
     --enroll-id peer \
     --enroll-pw peerpw \
-    --mspid ${ORG2_MSP} \
-    --namespace ${ORG2_NAMESPACE} \
+    --mspid "${ORG2_MSP}" \
+    --namespace "${ORG2_NAMESPACE}" \
     --name "${ORG2_NAME}-peer0" \
     --ca-name "${ORG2_CA}.${ORG2_NAMESPACE}"
 
@@ -111,33 +111,38 @@ In this step, create Org2 admin user in orderer CA. `sleep` command is execute t
 
 ```bash
 kubectl hlf ca register \
-    --name ${ORG1_ORD_CA} \
-    --user ${ORG2_ADMIN_USER} --secret ${ORG2_ADMIN_SECRET} --type admin \
-    --enroll-id enroll --enroll-secret enrollpw \
-    --namespace ${ORG1_NAMESPACE} \
-    --mspid ${ORG1_ORD_MSP}
+    --name "${ORG1_ORD_CA}" \
+    --user "${ORG2_ADMIN_USER}" \
+    --secret "${ORG2_ADMIN_SECRET}" \
+    --type admin \
+    --enroll-id enroll \
+    --enroll-secret enrollpw \
+    --namespace "${ORG1_NAMESPACE}" \
+    --mspid "${ORG1_ORD_MSP}"
 
 kubectl hlf ca enroll \
-    --name ${ORG1_ORD_CA} \
-    --user ${ORG2_ADMIN_USER} --secret ${ORG2_ADMIN_SECRET} \
-    --namespace ${ORG1_NAMESPACE} \
-    --mspid ${ORG1_ORD_MSP} \
+    --name "${ORG1_ORD_CA}" \
+    --user "${ORG2_ADMIN_USER}" \
+    --secret "${ORG2_ADMIN_SECRET}" \
+    --namespace "${ORG1_NAMESPACE}" \
+    --mspid "${ORG1_ORD_MSP}" \
     --ca-name ca \
     --output admin-ordservice.yaml
 
 kubectl hlf utils adduser \
     --userPath admin-ordservice.yaml \
     --config ordservice.yaml \
-    --username ${ORG2_ADMIN_USER} \
-    --mspid ${ORG1_ORD_MSP}
+    --username "${ORG2_ADMIN_USER}" \
+    --mspid "${ORG1_ORD_MSP}"
 
 sleep 10
 
 kubectl hlf ca enroll \
-    --name ${ORG1_ORD_CA} \
-    --user ${ORG2_ADMIN_USER} --secret ${ORG2_ADMIN_SECRET} \
-    --namespace ${ORG1_NAMESPACE} \
-    --mspid ${ORG1_ORD_MSP} \
+    --name "${ORG1_ORD_CA}" \
+    --user "${ORG2_ADMIN_USER}" \
+    --secret "${ORG2_ADMIN_SECRET}" \
+    --namespace "${ORG1_NAMESPACE}" \
+    --mspid "${ORG1_ORD_MSP}" \
     --ca-name tlsca \
     --output admin-tls-ordservice.yaml
 ```
@@ -146,28 +151,32 @@ kubectl hlf ca enroll \
 
 ```bash
 kubectl hlf ca register \
-    --name ${ORG2_CA} \
-    --user ${ORG2_ADMIN_USER} --secret ${ORG2_ADMIN_SECRET} --type admin \
-    --enroll-id enroll --enroll-secret enrollpw \
-    --namespace ${ORG2_NAMESPACE} \
-    --mspid ${ORG2_MSP}
+    --name "${ORG2_CA}" \
+    --user "${ORG2_ADMIN_USER}" \
+    --secret "${ORG2_ADMIN_SECRET}" \
+    --type admin \
+    --enroll-id enroll \
+    --enroll-secret enrollpw \
+    --namespace "${ORG2_NAMESPACE}" \
+    --mspid "${ORG2_MSP}"
 
 kubectl hlf ca enroll \
     --ca-name ca \
-    --name ${ORG2_CA} \
-    --user ${ORG2_ADMIN_USER} --secret ${ORG2_ADMIN_SECRET} \
-    --namespace ${ORG2_NAMESPACE} \
-    --mspid ${ORG2_MSP} \
+    --name "${ORG2_CA}" \
+    --user "${ORG2_ADMIN_USER}" \
+    --secret "${ORG2_ADMIN_SECRET}" \
+    --namespace "${ORG2_NAMESPACE}" \
+    --mspid "${ORG2_MSP}" \
     --output "peer-${ORG2_NAME}.yaml"
 
 # Output Org2 network config file with Org1MSP
-kubectl hlf inspect --output "${ORG2_NAME}.yaml" -o ${ORG2_MSP} -o ${ORG1_ORD_MSP}
+kubectl hlf inspect --output "${ORG2_NAME}.yaml" -o "${ORG2_MSP}" -o "${ORG1_ORD_MSP}"
 
 kubectl hlf utils adduser \
     --userPath "peer-${ORG2_NAME}.yaml" \
     --config "${ORG2_NAME}.yaml" \
-    --username ${ORG2_ADMIN_USER} \
-    --mspid ${ORG2_MSP}
+    --username "${ORG2_ADMIN_USER}" \
+    --mspid "${ORG2_MSP}"
 
 sleep 10
 ```
@@ -222,8 +231,6 @@ kubectl hlf channel addorg \
 ### Step 4.4: Add Org2 crypto material
 
 ```bash
-configtxlator proto_encode --type common.ConfigUpdate --input "${ORG2_NAME}.json" --output "${ORG2_NAME}.pb"
-
 echo '{"payload":{"header":{"channel_header":{"channel_id":"'${CHANNEL_ID}'","type":2}},"data":{"config_update":'$(cat ${ORG2_NAME}.json)'}}}' | jq . > "${ORG2_NAME}_update_in_envelope.json"
 
 configtxlator proto_encode --type common.Envelope --input "${ORG2_NAME}_update_in_envelope.json" --output "${ORG2_NAME}_update_in_envelope.pb"
@@ -385,6 +392,6 @@ Please see [deploy-org3.sh](/samples/adding-org-to-channel-in-same-cluster/deplo
 
 ## References
 
-- <https://hyperledger-fabric.readthedocs.io/en/release-2.4/channel_update_tutorial.html>
-- <https://github.com/aws-samples/non-profit-blockchain/blob/master/new-member/README.md>
-- [Adding a new Org in MultiCluster Env - Part 16 | Hyperledger Fabric On Kubernetes | ADITYA JOSHI |](https://www.youtube.com/watch?v=0VUx9CYn4z8&ab_channel=AdityaJoshi)
+- Fabric Channel Update Tutorial (<https://hyperledger-fabric.readthedocs.io/en/release-2.4/channel_update_tutorial.html>)
+- AWS Samples, Part 5: Adding a new member to a Fabric network on Amazon Managed Blockchain (<https://github.com/aws-samples/non-profit-blockchain/blob/master/new-member/README.md>)
+- Adding a new Org in MultiCluster Env - Part 16 | Hyperledger Fabric On Kubernetes (<https://www.youtube.com/watch?v=0VUx9CYn4z8&ab_channel=AdityaJoshi>)
