@@ -23,6 +23,8 @@ pip install yq
 wget https://github.com/hyperledger/fabric/releases/download/v2.4.3/hyperledger-fabric-linux-amd64-2.4.3.tar.gz
 sudo mkdir /usr/local/fabric-binaries
 sudo tar -C /usr/local/fabric-binaries -xzf hyperledger-fabric-linux-amd64-2.4.3.tar.gz
+
+# Remember to append /usr/local/fabric-binaries to env PATH
 ```
 
 ### P2P Connectivity
@@ -329,7 +331,9 @@ kubectl hlf channel signupdate \
 
 **In Org2 machine.**
 
-- Get updated `org2.yaml` and `org2_update_in_envelope.pb` from Org1. Before overwrite `org2.yaml`, you can rename existing config to `org2.yaml.backup`.
+- Get updated `org2.yaml` and `org2_update_in_envelope.pb` from Org1.
+
+  Before overwrite `org2.yaml`, you can rename existing config to `org2.yaml.backup`.
 
     ```bash
     kubectl hlf channel signupdate \
@@ -345,7 +349,7 @@ kubectl hlf channel signupdate \
 
 ### Step 4.7: Submit channel config update in Org1
 
-**In Org1 mchiane.**
+**In Org1 machine.**
 
 Prepare `org2_update_in_envelope.pb`, `org1-ecertplatform-sign.pb`, and `org2-ecertplatform-sign.pb` then execute this command to update channel configuration.
 
@@ -392,7 +396,7 @@ kubectl hlf channel addanchorpeer \
 
 ## Step 6: Install Chaincodes
 
-To install chaincode, Org2 need approval from other Org for each chaincode deployment. Below we demonstrate the steps to deploy `certificate_info` chaincode. For other chaincode can follow these steps by replacing `CC_NAME` and `CC_SEQUENCE`.
+To install chaincode, Org2 need approval from other Org for each chaincode deployment. Below we demonstrate the steps to deploy `certificate_info` chaincode. For other chaincode can repeat these steps by replacing `CC_NAME` and `CC_SEQUENCE` in [org-exports.sh](/samples/adding-org-to-channel-in-multicluster/org-exports.sh).
 
 ### Step 6.1: Install chaincode in Org2
 
@@ -444,7 +448,7 @@ export CC_NAME=ORG2_GIVEN_CC_NAME
 export PACKAGE_ID=ORG2_GIVEN_PACKAGE_ID
 ```
 
-Before proceed, please confirm [exports env for chaincode](/samples/adding-org-to-channel-in-multicluster/org-exports.sh) and run `source` again to reload.
+Before proceed, please confirm [exports env for chaincode](/samples/adding-org-to-channel-in-multicluster/org-exports.sh#L34-L36) and run `source` again to reload.
 
 Please remember to **increment sequence number by 1** from the last deployed sequence.
 
