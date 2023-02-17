@@ -364,6 +364,8 @@ kubectl hlf channel update \
     -s "${ORG2_NAME}-${CHANNEL_ID}-sign.pb"
 ```
 
+Example response:
+
 ![channel-update-response](images/channel-update-response.png "Channel update response")
 
 ## Step 5: Join channel
@@ -391,6 +393,8 @@ kubectl hlf channel addanchorpeer \
     --user "${ORG2_ADMIN_USER}" \
     --peer "${ORG2_PEER0}"
 ```
+
+Example response:
 
 ![channel-joined-response](images/channel-joined-response.png "Channel joined response")
 
