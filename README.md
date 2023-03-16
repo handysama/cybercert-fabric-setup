@@ -232,6 +232,7 @@ export CERT_KEY=d230d22e-b420-4e54-af8d-868d8d748374
 export CERT_SIGN=NONE
 export TEMPLATE_KEY=cbe91541-4b62-4847-adc1-c25259162a5c
 export ISSUER_ID=40c73a35-36c9-47c3-a89e-987781860b7f
+export ISSUER_NAME=CyberCert
 
 # Issue Certificate
 kubectl hlf chaincode invoke \
@@ -249,7 +250,7 @@ kubectl hlf chaincode invoke \
     -a "Aashman Anand Vyas" \
     -a "Aashman@academy.hk" \
     -a "${ISSUER_ID}" \
-    -a 'My Academy' \
+    -a "${ISSUER_NAME}" \
     -a '2022-02-02 17:00:00' \
     -a '{"attrib001":"Custom Attribute Value 001"}'
 
@@ -282,4 +283,13 @@ kubectl hlf chaincode query \
     --channel=${CHANNEL_ID} \
     --fcn=GetHistoryForKey \
     -a "${CERT_KEY}"
+
+# Query records with index selector
+kubectl hlf chaincode query \
+  --config=org1.yaml \
+  --user=admin \
+  --peer=org1-peer0.default \
+  --chaincode="${CHAINCODE_NAME}" \
+  --channel=${CHANNEL_ID} \
+  --fcn=QueryRecords -a "{\"selector\":{\"issuer_name\":\"${ISSUER_NAME}\"},\"use_index\":[\"_design/indexIssuerNameDoc\",\"indexIssuerName\"]}"
 ```

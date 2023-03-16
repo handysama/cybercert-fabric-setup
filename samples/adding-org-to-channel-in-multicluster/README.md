@@ -491,13 +491,13 @@ Admin Org1 can notify Admin Org2 after finish.
 
 **In Org2 machine.**
 
-Admin Org2 can check status by executing `querycommitted`. After approved, Org2 can access `certificate_info` chaincode using `org2.yaml` as network config param in fabric API.
+Admin Org2 can check status by executing `querycommitted`. After approved, Org2 can access `certificate_info` chaincode using `org2.yaml` as network config param in fabric API and `cybercert-blockchain-api`.
 
 ```bash
 kubectl hlf chaincode querycommitted \
-    --peer "${ORG2_PEER0}" \
-    --user "${ORG2_ADMIN_USER}" \
     --config "${ORG2_NAME}.yaml" \
+    --user "${ORG2_ADMIN_USER}" \
+    --peer "${ORG2_PEER0}" \
     --channel "${CHANNEL_ID}" \
     --chaincode "${CC_NAME}"
 ```
@@ -505,6 +505,20 @@ kubectl hlf chaincode querycommitted \
 Example response:
 
 ![querycommitted-response](images/querycommitted-response.png "Querycommitted response")
+
+### Step 6.4: Testing P2P connection
+
+**In Org2 machine.**
+
+Admin Org2 can test to fetch Org1 issued certificate by running [step-6-4-testing-p2p.sh](/samples/adding-org-to-channel-in-multicluster/org2-scripts/step-6-4-testing-p2p.sh).
+The script require `ISSUER_NAME` (case-sensitive) as parameter. Returned results are array of JSON object.
+It is recommended to redirect output to file. Org2 can cached Org1 certificate record as necessary.
+
+Example:
+
+```bash
+./samples/adding-org-to-channel-in-multicluster/org2-scripts/step-6-4-testing-p2p.sh CyberCert > cybercert-records.json
+```
 
 ## References
 

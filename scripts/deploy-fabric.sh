@@ -287,5 +287,6 @@ deploy_chaincode
 export CC_NAME=certificate_template
 deploy_chaincode
 
-export CC_NAME=token_registry
-deploy_chaincode
+# Access token chaincode is not required for P2P organization setup
+# export CC_NAME=token_registry
+# deploy_chaincode
