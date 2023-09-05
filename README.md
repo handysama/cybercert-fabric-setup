@@ -1,10 +1,16 @@
 # cybercert-fabric-setup
 
-Hyperledger Fabric setup guide for running CyberCert e-certificate chaincode. The recipe rely on [hlf-operator](https://github.com/hyperledger-labs/hlf-operator) that allow us to setup Fabric quickly.
+Hyperledger Fabric setup guide for running CyberCert e-certificate chaincode service. We use [Hyperledger Fabric Operator](https://github.com/hyperledger/bevel-operator-fabric/) to deploy Fabric cluster conveniently.
+
+## Docker hub account
+
+Account on [Docker hub](https://hub.docker.com/) is required to publish chaincode image that use to deploy chaincode as external service. For setup example, we already prepared default public repository.
+
+Alternatively, you can publish your own image by sign up for docker hub account. After succeed publishing docker image, you must change `CHAINCODE_IMAGE` env in deploy chaincode script to your repository path.
 
 ## How to setup on Debian/Ubuntu
 
-Windows platform is not supported, due to not supported by some open source libraries.
+Windows platform is not supported due to some libraries is not natively available on the platform.
 
 Prerequisite software:
 
@@ -12,7 +18,7 @@ Prerequisite software:
 - [snapd](https://snapcraft.io/docs/installing-snapd)
 - [Docker](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-using-native-package-management)
-- [microk8s 1.23](https://microk8s.io/docs/getting-started)
+- [microk8s](https://microk8s.io/docs/getting-started)
 - [krew](https://krew.sigs.k8s.io/docs/user-guide/setup/install/)
 - [helm](https://helm.sh/docs/intro/install/#from-snap)
 
@@ -37,7 +43,7 @@ Following are commands to install from command line.
 sudo usermod -a -G docker $USER
 
 # Install microk8s with last working version
-sudo snap install microk8s --classic --channel=1.23/stable
+sudo snap install microk8s --classic --channel=1.27/stable
 
 # Add user group. Restart terminal session to take effect
 sudo usermod -a -G microk8s $USER
@@ -47,9 +53,8 @@ sudo chown -f -R $USER ~/.kube
 microk8s status --wait-ready
 
 # Enable necessary plugin
-microk8s enable dashboard dns istio storage
+microk8s enable dashboard dns istio hostpath-storage
 
-sudo snap install kubectl --classic
 sudo snap install helm --classic
 
 # Setup Krew installation (please refer to official guide)
@@ -73,28 +78,15 @@ Deployment setup:
 - Clone `hlf-operator`
 
   ```bash
-  git clone https://github.com/hyperledger-labs/hlf-operator.git && cd hlf-operator
-  git checkout v1.5.1
+  git clone https://github.com/hyperledger/bevel-operator-fabric.git && cd bevel-operator-fabric
+  git checkout v1.9.2
   ```
 
-- Install istio. See: <https://github.com/hyperledger-labs/hlf-operator/tree/2ab0262e1776621eed19beedf9bf5fa5f397b5b2#install-istio>
+- Install helm hlf-operator
 
   ```bash
-  kubectl apply -f ./hack/istio-operator/crds/*
-  helm template ./hack/istio-operator/ \
-    --set hub=docker.io/istio \
-    --set tag=1.8.0 \
-    --set operatorNamespace=istio-operator \
-    --set watchedNamespaces=istio-system | kubectl apply -f -
-
-  kubectl create ns istio-system
-  kubectl apply -n istio-system -f ./hack/istio-operator.yaml
-  ```
-
-- Install operator
-
-  ```bash
-  helm install hlf-operator ./chart/hlf-operator
+  helm repo add kfs https://kfsoftware.github.io/hlf-helm-charts --force-update
+  helm install hlf-operator --version=1.9.0 -- kfs/hlf-operator
   ```
 
 - Install plugin
@@ -103,69 +95,146 @@ Deployment setup:
   kubectl krew install hlf
   ```
 
-- Patch kubectl-hlf command tools (plugin) to increase block size.
-  - Goto line of code like example in [here](https://github.com/hyperledger-labs/hlf-operator/blob/94c333140de92a1125d9fba8192396a01afbed4b/controllers/testutils/channel.go#L183) then update `AbsoluteMaxBytes` to `10 * 10124 * 1024`.
+- Install istio. See: <https://github.com/hyperledger/bevel-operator-fabric/tree/25c0a86b8aa2c710ee76287e0ce31f359ab6874b#install-istio>
 
-    ```go
-    // Before
-    BatchSize: orderer.BatchSize{
-      MaxMessageCount:   100,
-      AbsoluteMaxBytes:  1024 * 1024,
-      PreferredMaxBytes: 512 * 1024,
-    }
-    // After
-    BatchSize: orderer.BatchSize{
-      MaxMessageCount:   100,
-      AbsoluteMaxBytes:  10 * 1024 * 1024, // increase limit
-      PreferredMaxBytes: 512 * 1024,
-    }
-    ```
+  ```bash
+  curl -L https://istio.io/downloadIstio | sh -
 
-  - Build patched `kubectl-hlf`
+  kubectl create namespace istio-system
 
-    ```bash
-    cd kubectl-hlf
-    go build -o kubectl-hlf main.go
-    ```
+  istioctl operator init
 
-  - Find your local path of `kubectl-hlf` and change directory to there
+  kubectl apply -f - <<EOF
+  apiVersion: install.istio.io/v1alpha1
+  kind: IstioOperator
+  metadata:
+    name: istio-gateway
+    namespace: istio-system
+  spec:
+    addonComponents:
+      grafana:
+        enabled: false
+      kiali:
+        enabled: false
+      prometheus:
+        enabled: false
+      tracing:
+        enabled: false
+    components:
+      ingressGateways:
+        - enabled: true
+          k8s:
+            hpaSpec:
+              minReplicas: 1
+            resources:
+              limits:
+                cpu: 500m
+                memory: 512Mi
+              requests:
+                cpu: 100m
+                memory: 128Mi
+            service:
+              ports:
+                - name: http
+                  port: 80
+                  targetPort: 8080
+                  nodePort: 30949
+                - name: https
+                  port: 443
+                  targetPort: 8443
+                  nodePort: 30950
+              type: NodePort
+          name: istio-ingressgateway
+      pilot:
+        enabled: true
+        k8s:
+          hpaSpec:
+            minReplicas: 1
+          resources:
+            limits:
+              cpu: 300m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+    meshConfig:
+      accessLogFile: /dev/stdout
+      enableTracing: false
+      outboundTrafficPolicy:
+        mode: ALLOW_ANY
+    profile: default
 
-    Example local path `/home/$USER/.krew/store/hlf/v1.8.4/kubectl-hlf`
+  EOF
+  ```
 
-    Example change dir to `/home/$USER/.krew/store/hlf/`
+- Configure internal DNS. See: <https://github.com/hyperledger/bevel-operator-fabric/tree/25c0a86b8aa2c710ee76287e0ce31f359ab6874b#configure-internal-dns>
 
-    ```bash
-    cd ~/.krew/store/hlf
-    ```
+  ```bash
+  CLUSTER_IP=$(kubectl -n istio-system get svc istio-ingressgateway -o json | jq -r .spec.clusterIP)
+  kubectl apply -f - <<EOF
+  kind: ConfigMap
+  apiVersion: v1
+  metadata:
+    name: coredns
+    namespace: kube-system
+  data:
+    Corefile: |
+      .:53 {
+          errors
+          health {
+            lameduck 5s
+          }
+          rewrite name regex (.*)\.localho\.st host.ingress.internal
+          hosts {
+            ${CLUSTER_IP} host.ingress.internal
+            fallthrough
+          }
+          ready
+          kubernetes cluster.local in-addr.arpa ip6.arpa {
+            pods insecure
+            fallthrough in-addr.arpa ip6.arpa
+            ttl 30
+          }
+          prometheus :9153
+          forward . /etc/resolv.conf {
+            max_concurrent 1000
+          }
+          cache 30
+          loop
+          reload
+          loadbalance
+      }
+  EOF
+  ```
 
-  - Download official kubectl-hlf v1.5.1 and extract the zip file
+- Add cluster ip to `etc/hosts`
 
-    ```bash
-    wget https://github.com/hyperledger-labs/hlf-operator/releases/download/v1.5.1/hlf-operator_1.5.1_linux_amd64.zip
-    unzip -d v1.5.1 hlf-operator_1.5.1_linux_amd64.zip
-    ```
+  ```bash
+  # Output cluster ip to be added into `etc/hosts`
+  kubectl -n istio-system get svc istio-ingressgateway -o json | jq -r .spec.clusterIP
 
-  - Move previous build of `kubectl-hlf` to `v1.5.1` directory
+  # Edit `etc/hosts` and append CLUSTER_IP to the list
+  sudo nano etc/hosts
+  ```
 
-    ```bash
-    cp ~/hlf-operator/kubectl-hlf/kubectl-hlf ~/.krew/store/hlf/v1.5.1/kubectl-hlf
-    ```
+  Example edited content, replace CLUSTER_IP from previous output:
 
-  - Update symlink of `kubectl-hlf` point to `v1.5.1`
+  ```text
+  127.0.0.1   localhost
+  CLUSTER_IP  org1-ca.localho.st
+  CLUSTER_IP  peer0-org1.localho.st
+  CLUSTER_IP  ord-ca.localho.st
+  CLUSTER_IP  orderer0-ord.localho.st
+  ```
 
-    ```bash
-    ln -sf ~/.krew/store/hlf/v1.5.1/kubectl-hlf ~/.krew/bin/kubectl-hlf
-
-    # Assert symlink updated
-    ls -al ~/.krew/bin/
-    ```
-
-- Copy all fies in `chaincodes` directory to `fixtures/chaincodes`
-  - Example: `/home/ubuntu/github/hlf-operator/fixtures/chaincodes`
-- Create directory `scripts` and copy all files from `scripts` into there
-  - Example `/home/ubuntu/github/hlf-operator/scripts`
+- From this repository, copy all files in `scripts` to cloned `hlf-operator` repository with path `scripts`
 - From `scripts/deploy-fabric.sh`, change `KUBE_CONFIG_PATH` and `KUBECONFIG` to your local path then run the script
-- After running `deploy-fabric.sh`, there will be network config file `org1.yaml`. This config will be use in `blockchain-api`, please note the path to the file.
+- `cd` to cloned `hlf-operator` repository
+- Run `./scripts/deploy-fabric.sh`
+- Run `./scripts/deploy-cc-certinfo.sh` to deploy `certificate-info` chaincode
+- Run `./scripts/deploy-cc-certtemplate.sh` to deploy `certificate-template` chaincode
+- Run `./scripts/deploy-cc-tokenregistry.sh` to deploy `token-registry` chaincode
+- There will be exported network config file `org1.yaml`. This config will be use in `blockchain-api`, please note the path to the file to set `ORG1_HLF_CONFIG` env.
 
 ## Dashboard
 
@@ -180,12 +249,23 @@ microk8s dashboard-proxy
 ## How to clean up resource
 
 ```bash
-export KUBECONFIG=/var/snap/microk8s/current/credentials/client.config # Change to your local path
-export KUBE_CONFIG_PATH=/var/snap/microk8s/current/credentials/client.config # Change to your local path
+#!/bin/bash
+
+shopt -s expand_aliases
+alias kubectl='microk8s kubectl'
+export CHANNEL_ID=ecertplatform
 
 kubectl delete fabricorderernodes.hlf.kungfusoftware.es --all-namespaces --all
 kubectl delete fabricpeers.hlf.kungfusoftware.es --all-namespaces --all
 kubectl delete fabriccas.hlf.kungfusoftware.es --all-namespaces --all
+kubectl delete fabricchaincode.hlf.kungfusoftware.es --all-namespaces --all
+kubectl delete fabricmainchannels --all-namespaces --all
+kubectl delete fabricfollowerchannels --all-namespaces --all
+kubectl delete secret wallet
+
+# delete channel config
+kubectl delete configmap ${CHANNEL_ID}-config -n default
+kubectl delete configmap ${CHANNEL_ID}-org1msp-follower-config -n default
 ```
 
 ## How to redeploy setup
@@ -225,9 +305,8 @@ Following is example how to invoke chaincode through command line. Change parame
 
 ```bash
 #!/bin/bash
-export KUBECONFIG=/var/snap/microk8s/current/credentials/client.config # Change to your local path
 export CHANNEL_ID="ecertplatform"
-export CHAINCODE_NAME="certificate_info"
+export CHAINCODE_NAME="certificate-info"
 export CERT_KEY=d230d22e-b420-4e54-af8d-868d8d748374
 export CERT_SIGN=NONE
 export TEMPLATE_KEY=cbe91541-4b62-4847-adc1-c25259162a5c
