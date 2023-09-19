@@ -75,11 +75,10 @@ alias kubectl='microk8s kubectl'
 
 Deployment setup:
 
-- Clone `hlf-operator`
+- Clone this repository
 
   ```bash
-  git clone https://github.com/hyperledger/bevel-operator-fabric.git && cd bevel-operator-fabric
-  git checkout v1.9.2
+  git clone https://github.com/handysama/cybercert-fabric-setup.git && cd cybercert-fabric-setup
   ```
 
 - Install helm hlf-operator
@@ -89,15 +88,16 @@ Deployment setup:
   helm install hlf-operator --version=1.9.0 -- kfs/hlf-operator
   ```
 
-- Install plugin
+- Install krew hlf plugin
 
   ```bash
   kubectl krew install hlf
   ```
 
-- Install istio. See: <https://github.com/hyperledger/bevel-operator-fabric/tree/25c0a86b8aa2c710ee76287e0ce31f359ab6874b#install-istio>
+- Install [istio](https://github.com/hyperledger/bevel-operator-fabric/tree/25c0a86b8aa2c710ee76287e0ce31f359ab6874b#install-istio)
 
   ```bash
+  # After download, add binaries path to env PATH and restart terminal session
   curl -L https://istio.io/downloadIstio | sh -
 
   kubectl create namespace istio-system
@@ -167,7 +167,7 @@ Deployment setup:
   EOF
   ```
 
-- Configure internal DNS. See: <https://github.com/hyperledger/bevel-operator-fabric/tree/25c0a86b8aa2c710ee76287e0ce31f359ab6874b#configure-internal-dns>
+- [Configure internal DNS](https://github.com/hyperledger/bevel-operator-fabric/tree/25c0a86b8aa2c710ee76287e0ce31f359ab6874b#configure-internal-dns)
 
   ```bash
   CLUSTER_IP=$(kubectl -n istio-system get svc istio-ingressgateway -o json | jq -r .spec.clusterIP)
@@ -227,9 +227,6 @@ Deployment setup:
   CLUSTER_IP  orderer0-ord.localho.st
   ```
 
-- From this repository, copy all files in `scripts` to cloned `hlf-operator` repository with path `scripts`
-- From `scripts/deploy-fabric.sh`, change `KUBE_CONFIG_PATH` and `KUBECONFIG` to your local path then run the script
-- `cd` to cloned `hlf-operator` repository
 - Run `./scripts/deploy-fabric.sh`
 - Run `./scripts/deploy-cc-certinfo.sh` to deploy `certificate-info` chaincode
 - Run `./scripts/deploy-cc-certtemplate.sh` to deploy `certificate-template` chaincode
