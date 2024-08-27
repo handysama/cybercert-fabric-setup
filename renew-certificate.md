@@ -90,6 +90,20 @@ sudo microk8s refresh-certs -e front-proxy-client.crt
 
   ```bash
   kubectl hlf inspect --output org1.yaml -o Org1MSP -o OrdererMSP
+
+  kubectl hlf ca enroll \
+    --name=org1-ca \
+    --user=admin \
+    --secret=adminpw \
+    --mspid Org1MSP \
+    --ca-name ca \
+    --output peer-org1.yaml
+
+  kubectl hlf utils adduser \
+    --userPath=peer-org1.yaml \
+    --config=org1.yaml \
+    --username=admin \
+    --mspid=Org1MSP
   ```
 
 ## References
