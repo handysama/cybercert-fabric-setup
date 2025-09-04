@@ -271,15 +271,22 @@ kubectl delete configmap ${CHANNEL_ID}-org1msp-follower-config -n default
 
 - Update Persistent Volumes reclaim policy from `Delete` to `Retain` for:
   - `default/org1-peer0--couchdb`
-  - `default/org1-peer0--chaincode`
 
-- Clean up existing resources
+- Clean up existing resources by running `scripts/clean-deployment.sh`.
 
 - Re-enable PVC resource by remove reference of old uid by running:
 
   `kubectl patch pv YOUR_PV_NAME --type json -p '[{"op": "remove", "path": "/spec/claimRef/uid"}]'`
 
-- Bump `SEQUENCE` number of chaincode in `scripts/deploy-fabric.sh` and re-run the setup script
+- Bump `SEQUENCE` number of chaincode in each `scripts/deploy-cc-XXXXXXX.sh`
+
+- Run `scripts/deploy-fabric.sh`
+
+- Run `scripts/deploy-cc-certinfo.sh`
+
+- Run `scripts/deploy-cc-certtemplate.sh`
+
+- Run `scripts/deploy-cc-tokenregistry.sh`
 
 ### Changing reclaim policy of a PersistentVolume
 

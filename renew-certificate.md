@@ -18,6 +18,16 @@ sudo microk8s refresh-certs -c
 # refresh server and front proxy client certificate
 sudo microk8s refresh-certs -e server.crt
 sudo microk8s refresh-certs -e front-proxy-client.crt
+
+# If you are using snap for microk8s, use following modified command:
+# sudo systemctl start snapd
+# sudo systemctl start snapd.socket
+
+# sudo /var/lib/snapd/snap/bin/microk8s refresh-certs -e server.crt
+# sudo /var/lib/snapd/snap/bin/microk8s refresh-certs -e front-proxy-client.crt
+# sudo /var/lib/snapd/snap/bin/microk8s refresh-certs -c
+
+# sudo snap restart microk8s
 ```
 
 ## Hyperledger Fabric
